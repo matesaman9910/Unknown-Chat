@@ -3,30 +3,59 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Unknown Chat Room</title>
+  <title>The Unknown Chat</title>
   <style>
     :root {
       --neon: #00ffff;
-      --error: #ff4444;
-      --bg: #000;
+      --bg: #000000;
+      --glass: rgba(255, 255, 255, 0.05);
+      --me: rgba(0, 255, 255, 0.2);
+      --them: rgba(255, 255, 255, 0.1);
+      --error: #ff4d4d;
+    }
+
+    * {
+      box-sizing: border-box;
     }
 
     body {
       margin: 0;
       background-color: var(--bg);
+      font-family: 'Courier New', monospace;
       color: white;
-      font-family: monospace;
       display: flex;
       flex-direction: column;
       height: 100vh;
+      overflow: hidden;
     }
 
     #statusBar {
       text-align: center;
-      background: #111;
-      padding: 10px;
+      padding: 15px;
+      font-size: 1rem;
       font-weight: bold;
-      text-shadow: 0 0 8px var(--neon);
+      color: var(--neon);
+      text-shadow: 0 0 10px var(--neon);
+      background-color: #111;
+    }
+
+    #disconnectNotice {
+      display: none;
+      text-align: center;
+      padding: 10px;
+      background-color: var(--error);
+      color: white;
+      font-weight: bold;
+      text-shadow: 0 0 8px var(--error);
+    }
+
+    #typingNotice {
+      display: none;
+      text-align: center;
+      font-style: italic;
+      font-size: 0.9rem;
+      color: #aaa;
+      padding: 5px;
     }
 
     #messages {
@@ -35,97 +64,112 @@
       overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
 
     .message {
-      background: rgba(255, 255, 255, 0.05);
-      padding: 10px 15px;
-      border-radius: 10px;
-      max-width: 70%;
+      padding: 12px 18px;
+      border-radius: 12px;
+      max-width: 80%;
+      word-wrap: break-word;
+      animation: fadeIn 0.3s ease;
     }
 
     .me {
       align-self: flex-end;
-      background-color: rgba(0, 255, 255, 0.2);
+      background-color: var(--me);
     }
 
     .them {
       align-self: flex-start;
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: var(--them);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     #inputBox {
       display: flex;
+      background: var(--glass);
       padding: 10px;
-      background-color: #111;
       border-top: 1px solid #222;
     }
 
-    #inputBox input {
+    #messageInput {
       flex: 1;
       padding: 10px;
       font-size: 1rem;
-      border: none;
       background: #000;
       color: white;
+      border: none;
       outline: none;
     }
 
-    #inputBox button {
+    #sendBtn {
       padding: 10px 20px;
       background: var(--neon);
-      color: #000;
+      color: black;
+      font-weight: bold;
       border: none;
       cursor: pointer;
+      margin-left: 10px;
     }
 
-    #inputBox button:hover {
+    #sendBtn:hover {
       background: #0cc;
     }
 
-    #disconnectNotice {
-      color: var(--error);
-      font-weight: bold;
-      text-align: center;
-      padding: 10px;
-      display: none;
-    }
-
-    #leaveBtn {
+    #controls {
       position: absolute;
       top: 10px;
       right: 10px;
-      background: #f44;
-      color: white;
-      padding: 5px 10px;
-      border: none;
-      cursor: pointer;
-      z-index: 1000;
+      display: flex;
+      gap: 10px;
     }
 
-    #leaveBtn:hover {
-      background: #c22;
+    .control-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      font-weight: bold;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
     }
   </style>
 </head>
 <body>
   <div id="statusBar">🔌 Connecting to Unknown...</div>
   <div id="disconnectNotice">⚠️ The other user has disconnected.</div>
+  <div id="typingNotice">Unknown is typing...</div>
   <div id="messages"></div>
 
   <div id="inputBox">
-    <input type="text" id="messageInput" placeholder="Say something mysterious..." />
-    <button onclick="sendMessage()">Send</button>
+    <input type="text" id="messageInput" placeholder="Say something mysterious..." oninput="sendTypingStatus()" />
+    <button id="sendBtn" onclick="sendMessage()">Send</button>
   </div>
 
-  <button id="leaveBtn" onclick="leaveRoom()">Leave</button>
+  <div id="controls">
+    <button class="control-btn" onclick="leaveRoom()">Leave</button>
+    <button class="control-btn" onclick="findNew()">New Stranger</button>
+  </div>
 
-  <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded, onDisconnect, set, remove, get, onValue } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
+    import {
+      getDatabase, ref, push, onChildAdded,
+      onDisconnect, set, remove, get, onValue
+    } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+
+    import {
+      getAuth, signInAnonymously, onAuthStateChanged,
+      setPersistence, browserSessionPersistence
+    } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
@@ -140,9 +184,10 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const auth = getAuth();
+
     let userId = null;
-    let roomId = new URLSearchParams(window.location.search).get("room");
     let partnerId = null;
+    const roomId = new URLSearchParams(window.location.search).get("room");
 
     if (!roomId) {
       alert("Missing room ID!");
@@ -151,60 +196,78 @@
 
     setPersistence(auth, browserSessionPersistence).then(() => {
       return signInAnonymously(auth);
-    }).catch((err) => {
-      console.error("Auth error:", err);
-      showDisconnect("Authentication failed.");
-    });
+    }).then(() => {
+      onAuthStateChanged(auth, async (user) => {
+        if (!user) return;
+        userId = user.uid;
 
-    onAuthStateChanged(auth, async (user) => {
-      if (!user) return;
-      userId = user.uid;
+        const roomRef = ref(db, `rooms/${roomId}`);
+        const roomSnap = await get(roomRef);
+        const roomData = roomSnap.val();
 
-      const roomRef = ref(db, `rooms/${roomId}`);
-      const roomSnap = await get(roomRef);
-      const roomData = roomSnap.val();
-
-      if (!roomData || (!roomData.user1 && !roomData.user2)) {
-        showDisconnect("Room does not exist.");
-        return;
-      }
-
-      partnerId = (roomData.user1 === userId) ? roomData.user2 : roomData.user1;
-
-      // Monitor partner presence
-      const presenceRef = ref(db, `rooms/${roomId}/presence/${userId}`);
-      await set(presenceRef, true);
-      onDisconnect(presenceRef).remove();
-
-      const partnerPresenceRef = ref(db, `rooms/${roomId}/presence/${partnerId}`);
-      onValue(partnerPresenceRef, (snap) => {
-        if (snap.exists()) {
-          updateStatus("✅ Connected to Unknown");
-        } else {
-          updateStatus("⚠️ Waiting for Unknown...");
-          showDisconnect("The other user has disconnected.");
+        if (!roomData || (!roomData.user1 && !roomData.user2)) {
+          showDisconnected("Room does not exist.");
+          return;
         }
+
+        partnerId = (roomData.user1 === userId) ? roomData.user2 : roomData.user1;
+
+        // Presence
+        const presenceRef = ref(db, `rooms/${roomId}/presence/${userId}`);
+        await set(presenceRef, true);
+        onDisconnect(presenceRef).remove();
+
+        const partnerPresenceRef = ref(db, `rooms/${roomId}/presence/${partnerId}`);
+        onValue(partnerPresenceRef, (snap) => {
+          if (snap.exists()) {
+            updateStatus("✅ Connected to Unknown");
+            hideDisconnected();
+          } else {
+            updateStatus("⚠️ Waiting for Unknown...");
+            if (partnerId) showDisconnected("The other user has disconnected.");
+          }
+        });
+
+        // Cleanup after 5 mins
+        setTimeout(async () => {
+          await remove(ref(db, `rooms/${roomId}`));
+          window.location.href = "index.html";
+        }, 5 * 60 * 1000);
+
+        initChat();
+        watchTyping();
       });
-
-      initChat();
+    }).catch(err => {
+      showDisconnected("Auth or Firebase error.");
+      console.error(err);
     });
-
-    function updateStatus(text) {
-      document.getElementById("statusBar").textContent = text;
-    }
-
-    function showDisconnect(reason) {
-      document.getElementById("disconnectNotice").textContent = "⚠️ " + reason;
-      document.getElementById("disconnectNotice").style.display = "block";
-    }
 
     function initChat() {
       const messagesRef = ref(db, `rooms/${roomId}/messages`);
-
       onChildAdded(messagesRef, (snapshot) => {
         const msg = snapshot.val();
         addMessage(msg.sender === userId ? "me" : "them", msg.text);
       });
+    }
+
+    function watchTyping() {
+      const typingRef = ref(db, `rooms/${roomId}/typing`);
+      onValue(typingRef, (snap) => {
+        const typingUser = snap.val();
+        const isTyping = typingUser && typingUser !== userId;
+        document.getElementById("typingNotice").style.display = isTyping ? "block" : "none";
+      });
+    }
+
+    window.sendTypingStatus = function () {
+      const typingRef = ref(db, `rooms/${roomId}/typing`);
+      set(typingRef, userId);
+      setTimeout(() => {
+        const input = document.getElementById("messageInput");
+        if (!input.value.trim()) {
+          set(typingRef, null);
+        }
+      }, 2000);
     }
 
     window.sendMessage = function () {
@@ -219,11 +282,18 @@
         timestamp: Date.now()
       });
 
+      set(ref(db, `rooms/${roomId}/typing`), null);
       input.value = "";
     }
 
-    window.leaveRoom = function () {
+    window.leaveRoom = async function () {
+      await remove(ref(db, `rooms/${roomId}`));
       window.location.href = "index.html";
+    }
+
+    window.findNew = async function () {
+      await remove(ref(db, `rooms/${roomId}`));
+      window.location.href = "chat.html";
     }
 
     function addMessage(sender, text) {
@@ -233,6 +303,19 @@
       msgElem.innerText = text;
       messagesDiv.appendChild(msgElem);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function updateStatus(text) {
+      document.getElementById("statusBar").textContent = text;
+    }
+
+    function showDisconnected(reason) {
+      document.getElementById("disconnectNotice").textContent = "⚠️ " + reason;
+      document.getElementById("disconnectNotice").style.display = "block";
+    }
+
+    function hideDisconnected() {
+      document.getElementById("disconnectNotice").style.display = "none";
     }
   </script>
 </body>
