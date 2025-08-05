@@ -3,7 +3,7 @@
 Welcome to **The Unknown Chat**, a mysterious place where strangers talk — completely anonymously. No accounts, no usernames, just raw private conversations.
 
 ## 🌐 Live Website
-[Click here to visit The Unknown Chat](https://matesaman9910.github.io/Unknown-Chat/chat.html)
+[Click here to visit The Unknown Chat](https://matesaman9910.github.io/Unknown-Chat/)
 
 ## 📖 About the Project
 
