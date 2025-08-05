@@ -1,1 +1,0 @@
-// Handles message send/receive, typing indicators, disconnects
