@@ -1,48 +1,44 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js";
-import { getDatabase, ref, push, onValue, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-database.js";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
+import { getDatabase, ref, onValue, set, push, remove } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
   authDomain: "the-unknown-chat.firebaseapp.com",
+  databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app",
   projectId: "the-unknown-chat",
   storageBucket: "the-unknown-chat.appspot.com",
   messagingSenderId: "208285058331",
-  appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe",
-  databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app"
+  appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe"
 };
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
-const auth = getAuth();
 
-signInAnonymously(auth).then(() => {
-  onAuthStateChanged(auth, async user => {
-    if (!user) return;
-    const uid = user.uid;
-    const queueRef = ref(db, "queue");
-    const myRef = push(queueRef);
-    await myRef.set({ uid });
-    onDisconnect(myRef).remove();
+const queueRef = ref(db, "queue");
 
-    onValue(queueRef, async (snapshot) => {
-      const queue = snapshot.val();
-      if (!queue) return;
+document.getElementById("startBtn").onclick = async () => {
+  const user = push(queueRef);
+  await set(user, { timestamp: Date.now() });
 
-      const entries = Object.entries(queue).filter(([key, val]) => val.uid !== uid);
-      if (entries.length > 0) {
-        const [partnerKey, partnerVal] = entries[0];
-        await remove(ref(db, `queue/${partnerKey}`));
-        await remove(myRef);
+  document.getElementById("status").style.display = "block";
+  document.getElementById("startBtn").disabled = true;
 
-        const roomRef = push(ref(db, "rooms"));
-        await roomRef.set({
-          users: { [uid]: true, [partnerVal.uid]: true },
-          createdAt: Date.now()
-        });
+  onValue(queueRef, async (snapshot) => {
+    const users = Object.entries(snapshot.val() || {});
+    if (users.length >= 2) {
+      const [user1, user2] = users;
+      const roomId = push(ref(db, "rooms")).key;
 
-        window.location.href = `room.html?room=${roomRef.key}`;
-      }
-    });
+      await set(ref(db, `rooms/${roomId}`), {
+        user1: user1[0],
+        user2: user2[0],
+        createdAt: Date.now()
+      });
+
+      await remove(ref(db, `queue/${user1[0]}`));
+      await remove(ref(db, `queue/${user2[0]}`));
+
+      window.location.href = `room.html?room=${roomId}`;
+    }
   });
-});
+};
