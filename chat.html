@@ -3,23 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Matching You with an Unknown...</title>
+  <title>Connecting...</title>
   <style>
     body {
       margin: 0;
       background-color: #000;
-      color: #fff;
-      font-family: monospace;
+      font-family: 'Courier New', Courier, monospace;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
-      height: 100vh;
       text-align: center;
-      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
     }
 
-    h1 {
+    #statusMessage {
       font-size: 2rem;
+      color: #00ffff;
+      text-shadow: 0 0 10px #00ffff;
     }
 
     .dot {
@@ -27,32 +29,31 @@
     }
 
     @keyframes blink {
-      0% { opacity: 0.1; }
+      0% { opacity: 0.2; }
       100% { opacity: 1; }
     }
 
-    h2#errorMessage {
+    #errorMessage {
       display: none;
       color: red;
-      font-size: 1rem;
       margin-top: 20px;
-      max-width: 600px;
+      font-weight: bold;
+      text-shadow: 0 0 5px red;
+      font-size: 1.2rem;
+      white-space: pre-line;
     }
   </style>
 </head>
 <body>
   <h1 id="statusMessage">Waiting for another Unknown<span class="dot">...</span></h1>
-  <h2 id="errorMessage">
-    ❌ ERROR: Sorry, we are currently experiencing technical difficulties.<br>
-    Please try again later.
-  </h2>
+  <h2 id="errorMessage">❌ ERROR: Sorry, we are currently experiencing technical difficulties.
+Please try again later.</h2>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
     import { getDatabase, ref, push, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
 
-    // ✅ Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
       authDomain: "the-unknown-chat.firebaseapp.com",
@@ -80,7 +81,6 @@
         if (!user) return;
         userId = user.uid;
 
-        // Add self to matchmaking queue
         await set(ref(db, `queue/${userId}`), {
           timestamp: Date.now()
         }).catch((error) => {
