@@ -2,26 +2,25 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Room</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.24.0/firebase-auth-compat.js"></script>
-  <script src="room.js" defer></script>
+  <title>Chat Room</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div id="topbar">
-    <span id="status">Connected to Unknown</span>
-    <div class="actions">
-      <button onclick="leaveRoom()">Leave</button>
-      <button onclick="findNew()">New Stranger</button>
+  <div class="chat-container">
+    <div class="chat-header">
+      <span>Connected to: <strong>Unknown</strong></span>
+      <button onclick="leave()">Leave</button>
     </div>
+
+    <div class="chat-box" id="chatBox"></div>
+    <div class="typing-indicator" id="typingStatus"></div>
+
+    <form id="chatForm" autocomplete="off">
+      <input type="text" id="messageInput" placeholder="Type your message..." />
+      <button type="submit">Send</button>
+    </form>
   </div>
-  <div id="chatBox" class="chat-box"></div>
-  <div id="typingStatus"></div>
-  <form id="chatForm">
-    <input type="text" id="msgInput" placeholder="Type something..." autocomplete="off"/>
-    <button type="submit">Send</button>
-  </form>
+
+  <script type="module" src="room.js"></script>
 </body>
 </html>
