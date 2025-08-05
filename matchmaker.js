@@ -1,3 +1,7 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-app.js";
+import { getDatabase, ref, push, onValue, remove, onDisconnect } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-database.js";
+import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/9.24.0/firebase-auth.js";
+
 const firebaseConfig = {
   apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
   authDomain: "the-unknown-chat.firebaseapp.com",
@@ -8,28 +12,37 @@ const firebaseConfig = {
   databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app"
 };
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const auth = firebase.auth();
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const auth = getAuth();
 
-auth.signInAnonymously().then(() => {
-  const userId = auth.currentUser.uid;
-  const queueRef = db.ref("queue");
-  const roomsRef = db.ref("rooms");
+signInAnonymously(auth).then(() => {
+  onAuthStateChanged(auth, async user => {
+    if (!user) return;
+    const uid = user.uid;
+    const queueRef = ref(db, "queue");
+    const myRef = push(queueRef);
+    await myRef.set({ uid });
+    onDisconnect(myRef).remove();
 
-  queueRef.once("value", (snapshot) => {
-    const queue = snapshot.val() || {};
-    const available = Object.keys(queue).find(id => id !== userId);
+    onValue(queueRef, async (snapshot) => {
+      const queue = snapshot.val();
+      if (!queue) return;
 
-    if (available) {
-      const room = roomsRef.push();
-      const roomId = room.key;
-      room.set({ users: { [userId]: true, [available]: true }, messages: [], createdAt: Date.now() });
-      db.ref("queue/" + available).remove();
-      window.location.href = "room.html?room=" + roomId;
-    } else {
-      queueRef.child(userId).set(true);
-      queueRef.child(userId).onDisconnect().remove();
-    }
+      const entries = Object.entries(queue).filter(([key, val]) => val.uid !== uid);
+      if (entries.length > 0) {
+        const [partnerKey, partnerVal] = entries[0];
+        await remove(ref(db, `queue/${partnerKey}`));
+        await remove(myRef);
+
+        const roomRef = push(ref(db, "rooms"));
+        await roomRef.set({
+          users: { [uid]: true, [partnerVal.uid]: true },
+          createdAt: Date.now()
+        });
+
+        window.location.href = `room.html?room=${roomRef.key}`;
+      }
+    });
   });
 });
