@@ -1,15 +1,21 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>The Unknown Chat</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js" type="module"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js" type="module"></script>
 </head>
-<body class="centered">
+<body>
   <div class="container">
-    <h1>The Unknown Chat</h1>
-    <p>You will be randomly connected to another stranger.</p>
-    <button onclick="window.location.href='chat.html'">Enter the Unknown</button>
+    <h1>Welcome to <span class="highlight">The Unknown Chat</span></h1>
+    <p>Talk to a complete stranger. Anonymous. Free. Safe.</p>
+    <button id="startBtn">Begin Chat</button>
+    <div id="status" class="status-message" style="display:none;">Waiting for another unknown...</div>
+    <div id="error" class="error-message" style="display:none;">Could not connect. Please try again.</div>
   </div>
+  <script type="module" src="matchmaker.js"></script>
 </body>
 </html>
