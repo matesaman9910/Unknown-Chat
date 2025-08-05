@@ -7,132 +7,158 @@
 
 body {
   font-family: 'Segoe UI', 'Roboto', sans-serif;
-  background-color: #f9fafb;
-  color: #111827;
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
-}
-
-/* === CONTAINER === */
-.container {
-  background-color: #ffffff;
-  padding: 32px;
-  border-radius: 16px;
-  width: 100%;
-  max-width: 800px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, #0f0f0f, #002b20);
+  color: #d4ffd4;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-}
-
-/* === HEADER === */
-.header {
-  display: flex;
-  justify-content: space-between;
+  justify-content: start;
   align-items: center;
+  padding: 20px;
+  overflow: hidden;
 }
 
-.header h1 {
-  font-size: 1.5rem;
-  font-weight: 600;
+/* HEADER / STATUS BAR */
+.status-bar {
+  background-color: #003322;
+  color: #aaffaa;
+  padding: 8px 20px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  text-align: center;
+  animation: fadeIn 0.4s ease-in-out;
 }
 
-/* === CHAT BOX === */
-.chat-box {
-  background-color: #f3f4f6;
+.status-bar.error {
+  background-color: #441111;
+  color: #ffaaaa;
+}
+
+/* CHAT WINDOW */
+.chat-container {
+  background: #111111;
+  border: 1px solid #005533;
+  border-radius: 10px;
+  width: 95%;
+  max-width: 900px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 0 20px #003322;
+}
+
+.messages {
+  flex: 1;
   padding: 16px;
-  border-radius: 8px;
-  height: 400px;
   overflow-y: auto;
-  border: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  font-size: 15px;
+  scrollbar-width: thin;
+  scrollbar-color: #004422 #111111;
 }
 
-.chat-message {
-  background-color: #e0f2fe;
-  padding: 10px 14px;
+.messages::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages::-webkit-scrollbar-thumb {
+  background: #006644;
+  border-radius: 4px;
+}
+
+.message {
+  margin-bottom: 12px;
+  padding: 8px 14px;
   border-radius: 8px;
-  max-width: 70%;
-  align-self: flex-start;
+  max-width: 75%;
   word-wrap: break-word;
 }
 
-.chat-message.self {
-  background-color: #d1fae5;
+.message.you {
   align-self: flex-end;
+  background: #005533;
+  color: #eaffea;
 }
 
-/* === INPUT AREA === */
-.input-area {
+.message.other {
+  align-self: flex-start;
+  background: #222;
+  color: #aaffaa;
+}
+
+/* INPUT AREA */
+.input-container {
   display: flex;
-  gap: 12px;
+  border-top: 1px solid #004422;
+  background: #000000;
 }
 
-.input-area input {
-  flex-grow: 1;
-  padding: 12px 16px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  font-size: 1rem;
-}
-
-.input-area button {
-  background-color: #3b82f6;
-  color: white;
-  border: none;
-  padding: 12px 20px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.input-area button:hover {
-  background-color: #2563eb;
-}
-
-/* === ERROR + STATUS === */
-.status-message,
-.error-message {
+input[type="text"] {
+  flex: 1;
   padding: 12px;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 0.95rem;
+  border: none;
+  background: #111;
+  color: #d4ffd4;
+  font-size: 14px;
+  outline: none;
 }
 
-.status-message {
-  background-color: #ecfdf5;
-  color: #065f46;
-  border: 1px solid #10b981;
+input[type="text"]::placeholder {
+  color: #777;
 }
 
-.error-message {
-  background-color: #fef2f2;
-  color: #991b1b;
-  border: 1px solid #ef4444;
+button {
+  padding: 0 20px;
+  background: #00aa55;
+  color: black;
+  border: none;
+  font-weight: bold;
+  font-size: 14px;
+  cursor: pointer;
+  transition: 0.2s;
 }
 
-/* === BUTTON GROUP === */
-.button-group {
+button:hover {
+  background: #00cc66;
+}
+
+.typing-indicator {
+  font-style: italic;
+  font-size: 12px;
+  color: #77ff77;
+  margin: 4px 12px;
+}
+
+.controls {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
-  margin-top: 8px;
+  margin: 8px;
+  gap: 10px;
 }
 
-.button-group button {
-  padding: 8px 16px;
-  border: none;
-  background-color: #e5e7eb;
-  border-radius: 6px;
-  cursor: pointer;
+.controls button {
+  background: #003322;
+  color: #aaffaa;
+  padding: 6px 14px;
+  font-size: 13px;
+  border-radius: 4px;
+  border: 1px solid #005533;
 }
 
-.button-group button:hover {
-  background-color: #d1d5db;
+.controls button:hover {
+  background: #005533;
+  color: white;
+}
+
+/* ANIMATIONS */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
