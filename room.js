@@ -55,12 +55,18 @@ onValue(roomRef, (snap) => {
   }
 });
 
-// Watch for disconnects
 onValue(ref(db, `rooms/${roomId}/users`), (snap) => {
   const users = snap.val() || {};
-  if (!users[userId] && !hasWarned) {
-    showError("⚠️ Other user disconnected. Returning to queue...");
+  const ids = Object.keys(users);
+
+  if (!hasConnected && ids.length === 2) {
+    hasConnected = true;
+    statusBar.innerText = "🔗 Connected to Unknown.";
+  }
+
+  if (hasConnected && ids.length < 2 && !hasWarned) {
     hasWarned = true;
+    statusBar.innerText = "❌ Stranger disconnected. Returning to queue...";
     setTimeout(() => {
       window.location.href = "index.html";
     }, 4000);
