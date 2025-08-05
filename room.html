@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chatting with Unknown</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      color: #fff;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #messages {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .message {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 10px 15px;
+      border-radius: 10px;
+      max-width: 70%;
+    }
+
+    .me {
+      align-self: flex-end;
+      background-color: rgba(0, 255, 255, 0.2);
+    }
+
+    .them {
+      align-self: flex-start;
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    #inputBox {
+      display: flex;
+      padding: 10px;
+      background-color: #111;
+      border-top: 1px solid #222;
+    }
+
+    #inputBox input {
+      flex: 1;
+      padding: 10px;
+      font-size: 1rem;
+      border: none;
+      background: #000;
+      color: white;
+      outline: none;
+    }
+
+    #inputBox button {
+      padding: 10px 20px;
+      background: #0ff;
+      color: #000;
+      border: none;
+      cursor: pointer;
+    }
+
+    #inputBox button:hover {
+      background: #0cc;
+    }
+  </style>
+</head>
+<body>
+  <div id="messages"></div>
+
+  <div id="inputBox">
+    <input type="text" id="messageInput" placeholder="Say something mysterious..." />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
+    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
+
+    // Your Firebase config (as provided)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
+      authDomain: "the-unknown-chat.firebaseapp.com",
+      projectId: "the-unknown-chat",
+      storageBucket: "the-unknown-chat.firebasestorage.app",
+      messagingSenderId: "208285058331",
+      appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth();
+
+    let userId = null;
+
+    // Get room ID from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const roomId = urlParams.get("room");
+
+    if (!roomId) {
+      alert("Missing room ID!");
+      window.location.href = "index.html";
+    }
+
+    // Sign in and start chat
+    signInAnonymously(auth).then(() => {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          userId = user.uid;
+          initChat();
+        }
+      });
+    });
+
+    function initChat() {
+      const messagesRef = ref(db, `rooms/${roomId}/messages`);
+
+      // Listen for new messages
+      onChildAdded(messagesRef, (snapshot) => {
+        const msg = snapshot.val();
+        addMessage(msg.sender === userId ? "me" : "them", msg.text);
+      });
+    }
+
+    function sendMessage() {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (text === "") return;
+
+      const messagesRef = ref(db, `rooms/${roomId}/messages`);
+      push(messagesRef, {
+        sender: userId,
+        text: text,
+        timestamp: Date.now()
+      });
+
+      input.value = "";
+    }
+
+    function addMessage(sender, text) {
+      const messagesDiv = document.getElementById("messages");
+      const msgElem = document.createElement("div");
+      msgElem.className = `message ${sender}`;
+      msgElem.innerText = text;
+      messagesDiv.appendChild(msgElem);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+  </script>
+</body>
+</html>
