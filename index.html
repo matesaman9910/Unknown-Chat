@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>The Unknown Chat</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      color: #fff;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      height: 100vh;
+    }
+
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      font-size: 1.2rem;
+      max-width: 600px;
+      margin: 0 20px 2rem;
+    }
+
+    button {
+      padding: 10px 25px;
+      font-size: 1.2rem;
+      border: none;
+      background-color: #fff;
+      color: #000;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #ccc;
+    }
+  </style>
+</head>
+<body>
+  <h1>Welcome to The Unknown Chat</h1>
+  <p>
+    This is a mysterious space where strangers talk privately.<br>
+    No usernames. No history. Just you and an Unknown.<br><br>
+    Click below to begin.
+  </p>
+  <button onclick="enterChat()">Enter Chat</button>
+
+  <script>
+    function enterChat() {
+      window.location.href = "chat.html"; // We'll build this next
+    }
+  </script>
+</body>
+</html>
