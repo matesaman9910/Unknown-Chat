@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Matching You with an Unknown...</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #000;
+      color: #fff;
+      font-family: monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 2rem;
+    }
+
+    .dot {
+      animation: blink 1s infinite alternate;
+    }
+
+    @keyframes blink {
+      0% { opacity: 0.1; }
+      100% { opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <h1>Waiting for another Unknown<span class="dot">...</span></h1>
+
+  <!-- Firebase SDK -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
+    import { getDatabase, ref, push, onValue, set, remove, get } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
+      authDomain: "the-unknown-chat.firebaseapp.com",
+      projectId: "the-unknown-chat",
+      storageBucket: "the-unknown-chat.firebasestorage.app",
+      messagingSenderId: "208285058331",
+      appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe",
+      databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth();
+
+    let userId = null;
+    let matched = false;
+
+    signInAnonymously(auth).catch(console.error);
+
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        userId = user.uid;
+        await set(ref(db, `queue/${userId}`), {
+          timestamp: Date.now()
+        });
+
+        checkForPartner();
+      }
+    });
+
+    function checkForPartner() {
+      const queueRef = ref(db, 'queue');
+
+      onValue(queueRef, async (snapshot) => {
+        if (matched) return;
+
+        const users = snapshot.val();
+        if (!users) return;
+
+        const otherUserId = Object.keys(users).find(id => id !== userId);
+        if (!otherUserId) return;
+
+        matched = true;
+
+        // Create room
+        const roomRef = push(ref(db, 'rooms'));
+        const roomId = roomRef.key;
+
+        await set(roomRef, {
+          user1: userId,
+          user2: otherUserId,
+          createdAt: Date.now()
+        });
+
+        // Remove both from queue
+        await remove(ref(db, `queue/${userId}`));
+        await remove(ref(db, `queue/${otherUserId}`));
+
+        // Go to room
+        window.location.href = `room.html?room=${roomId}`;
+      });
+    }
+  </script>
+</body>
+</html>
