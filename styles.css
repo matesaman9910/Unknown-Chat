@@ -1,152 +1,138 @@
-/* === GLOBAL STYLES === */
+/* === RESET === */
 * {
-  box-sizing: border-box;
   margin: 0;
   padding: 0;
+  box-sizing: border-box;
 }
 
 body {
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #0a0f2c, #001f3f);
-  color: #ffffff;
+  font-family: 'Segoe UI', 'Roboto', sans-serif;
+  background-color: #f9fafb;
+  color: #111827;
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 20px;
-  overflow: hidden;
-}
-
-/* === CENTERED CONTAINERS === */
-.centered .container {
-  text-align: center;
-  background: rgba(0, 20, 40, 0.9);
   padding: 40px;
+}
+
+/* === CONTAINER === */
+.container {
+  background-color: #ffffff;
+  padding: 32px;
   border-radius: 16px;
-  box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
-  max-width: 500px;
   width: 100%;
-  animation: fadeIn 0.5s ease-in-out;
-}
-
-/* === HEADINGS === */
-h1, h2 {
-  color: #00eaff;
-  text-shadow: 0 0 10px #00eaff88;
-  margin-bottom: 15px;
-}
-
-p {
-  color: #cccccc;
-  margin-bottom: 25px;
-}
-
-/* === BUTTONS === */
-button {
-  background: #00eaff;
-  color: #001f3f;
-  padding: 12px 28px;
-  font-size: 1rem;
-  font-weight: bold;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 0 10px rgba(0, 255, 255, 0.2);
-}
-
-button:hover {
-  background: #00b5cc;
-  transform: scale(1.05);
-}
-
-/* === CHAT ROOM === */
-.chat-container {
-  width: 100%;
-  max-width: 700px;
-  background: rgba(0, 10, 25, 0.9);
-  padding: 30px;
-  border-radius: 16px;
-  box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+  max-width: 800px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  animation: fadeIn 0.5s ease-in-out;
+  gap: 16px;
 }
 
-.chat-header {
+/* === HEADER === */
+.header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #00eaff;
-  font-weight: bold;
-  font-size: 1rem;
 }
 
+.header h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* === CHAT BOX === */
 .chat-box {
-  flex: 1;
-  min-height: 250px;
-  max-height: 350px;
+  background-color: #f3f4f6;
+  padding: 16px;
+  border-radius: 8px;
+  height: 400px;
   overflow-y: auto;
-  background: #00182d;
-  padding: 20px;
-  border-radius: 10px;
-  border: 1px solid #00eaff33;
+  border: 1px solid #e5e7eb;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
 }
 
-.bubble {
-  padding: 12px 18px;
-  border-radius: 14px;
-  max-width: 75%;
-  line-height: 1.4;
+.chat-message {
+  background-color: #e0f2fe;
+  padding: 10px 14px;
+  border-radius: 8px;
+  max-width: 70%;
+  align-self: flex-start;
   word-wrap: break-word;
 }
 
-.bubble.self {
-  background: #00eaff;
-  color: #001f3f;
+.chat-message.self {
+  background-color: #d1fae5;
   align-self: flex-end;
 }
 
-.bubble.other {
-  background: #003344;
-  color: #ffffff;
-  align-self: flex-start;
-}
-
-.typing-indicator {
-  font-style: italic;
-  color: #00eaff;
-  padding-left: 4px;
-  font-size: 0.9rem;
-}
-
-/* === INPUT FIELD === */
-#chatForm {
+/* === INPUT AREA === */
+.input-area {
   display: flex;
-  gap: 10px;
+  gap: 12px;
 }
 
-#messageInput {
+.input-area input {
   flex-grow: 1;
-  padding: 12px;
-  border: none;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 1rem;
-  background: #002a4d;
-  color: #ffffff;
-  outline: none;
 }
 
-#messageInput::placeholder {
-  color: #888;
+.input-area button {
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
 }
 
-/* === ANIMATIONS === */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
+.input-area button:hover {
+  background-color: #2563eb;
+}
+
+/* === ERROR + STATUS === */
+.status-message,
+.error-message {
+  padding: 12px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+.status-message {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.error-message {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #ef4444;
+}
+
+/* === BUTTON GROUP === */
+.button-group {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.button-group button {
+  padding: 8px 16px;
+  border: none;
+  background-color: #e5e7eb;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.button-group button:hover {
+  background-color: #d1d5db;
 }
