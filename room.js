@@ -1,13 +1,10 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js";
-import {
-  getDatabase, ref, onChildAdded, push, set, onDisconnect,
-  onValue, remove, serverTimestamp, update
-} from "https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, onValue, set, remove, update, serverTimestamp, onDisconnect } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
   authDomain: "the-unknown-chat.firebaseapp.com",
-  databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app",
+  databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app", // UPDATED
   projectId: "the-unknown-chat",
   storageBucket: "the-unknown-chat.appspot.com",
   messagingSenderId: "208285058331",
@@ -18,95 +15,111 @@ const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
 const roomId = new URLSearchParams(window.location.search).get("room");
-if (!roomId) {
-  document.getElementById("errorMessage").textContent = "❌ Room does not exist.";
-  document.getElementById("errorMessage").style.display = "block";
-  throw new Error("No room ID found");
-}
-
 const messagesRef = ref(db, `rooms/${roomId}/messages`);
-const typingRef = ref(db, `rooms/${roomId}/typing`);
-const presenceRef = ref(db, `rooms/${roomId}/presence`);
 const roomRef = ref(db, `rooms/${roomId}`);
-
-// Unique ID for this client
 const userId = crypto.randomUUID();
-await set(ref(db, `rooms/${roomId}/presence/${userId}`), true);
-onDisconnect(ref(db, `rooms/${roomId}/presence/${userId}`)).remove();
 
-// Remove empty rooms after both users leave
-onValue(presenceRef, (snap) => {
-  const present = snap.val() || {};
-  const count = Object.keys(present).length;
-  if (count === 1) {
-    showSystemMessage("Stranger has disconnected.");
+let hasConnected = false;
+let hasWarned = false;
+
+// Elements
+const messagesDiv = document.getElementById("messages");
+const input = document.getElementById("messageInput");
+const sendBtn = document.getElementById("sendButton");
+const typingIndicator = document.getElementById("typingIndicator");
+const statusBar = document.getElementById("statusBar");
+
+// Set user as present
+set(ref(db, `rooms/${roomId}/users/${userId}`), {
+  joined: Date.now()
+});
+
+onDisconnect(ref(db, `rooms/${roomId}/users/${userId}`)).remove();
+
+// Auto-delete if both leave
+onValue(ref(db, `rooms/${roomId}/users`), (snapshot) => {
+  const users = snapshot.val();
+  if (!users || Object.keys(users).length === 0) {
+    remove(ref(db, `rooms/${roomId}`));
+    return;
+  }
+});
+
+// Watch for room existence
+onValue(roomRef, (snap) => {
+  if (!snap.exists()) {
+    showError("Room does not exist or has been closed.");
     setTimeout(() => {
-      alert("Stranger left. You'll be returned to queue.");
       window.location.href = "index.html";
     }, 3000);
-  } else if (count === 0) {
-    remove(roomRef); // auto-cleanup
   }
 });
 
-// Message send
-window.sendMessage = async () => {
-  const input = document.getElementById("messageInput");
-  const msg = input.value.trim();
-  if (!msg) return;
-  await push(messagesRef, {
-    sender: userId,
-    text: msg,
-    timestamp: serverTimestamp()
-  });
-  input.value = "";
-  update(typingRef, { [userId]: false });
-};
-
-// Listen for new messages
-onChildAdded(messagesRef, (snap) => {
-  const data = snap.val();
-  const msgElem = document.createElement("div");
-  msgElem.className = data.sender === userId ? "message self" : "message other";
-  msgElem.textContent = data.text;
-  document.getElementById("chatBox").appendChild(msgElem);
-  document.getElementById("chatBox").scrollTop = 99999;
+// Watch for disconnects
+onValue(ref(db, `rooms/${roomId}/users`), (snap) => {
+  const users = snap.val() || {};
+  if (!users[userId] && !hasWarned) {
+    showError("⚠️ Other user disconnected. Returning to queue...");
+    hasWarned = true;
+    setTimeout(() => {
+      window.location.href = "index.html";
+    }, 4000);
+  }
 });
 
-// Typing detection
-const input = document.getElementById("messageInput");
+// Typing indicator
 input.addEventListener("input", () => {
-  update(typingRef, { [userId]: input.value.trim().length > 0 });
+  set(ref(db, `rooms/${roomId}/typing/${userId}`), input.value.length > 0);
 });
 
-// Show typing status
-onValue(typingRef, (snap) => {
-  const typingData = snap.val() || {};
-  const othersTyping = Object.keys(typingData).filter(k => k !== userId && typingData[k]);
-  document.getElementById("statusMessage").textContent = othersTyping.length > 0 ? "Stranger is typing..." : "";
+// Show typing
+onValue(ref(db, `rooms/${roomId}/typing`), (snap) => {
+  const typing = snap.val() || {};
+  const someoneElseTyping = Object.keys(typing).some(id => id !== userId && typing[id]);
+  typingIndicator.innerText = someoneElseTyping ? "Stranger is typing..." : "";
 });
 
-// Enter = send
-input.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    sendMessage();
+// Send message
+sendBtn.onclick = sendMessage;
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") sendMessage();
+});
+
+function sendMessage() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  const messageData = {
+    userId,
+    text,
+    timestamp: serverTimestamp()
+  };
+
+  const newMsgRef = ref(db, `rooms/${roomId}/messages/${Date.now()}`);
+  set(newMsgRef, messageData);
+
+  input.value = "";
+  set(ref(db, `rooms/${roomId}/typing/${userId}`), false);
+}
+
+// Display messages
+onValue(messagesRef, (snap) => {
+  const msgs = snap.val() || {};
+  messagesDiv.innerHTML = "";
+
+  Object.values(msgs).forEach(msg => {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message " + (msg.userId === userId ? "you" : "other");
+    msgDiv.innerText = msg.text;
+    messagesDiv.appendChild(msgDiv);
+  });
+
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+});
+
+function showError(text) {
+  if (statusBar) {
+    statusBar.innerText = text;
+    statusBar.classList.add("error");
   }
-});
-
-// Leave/new stranger
-window.leaveRoom = () => {
-  remove(ref(db, `rooms/${roomId}/presence/${userId}`));
-  alert("You left the chat.");
-  window.location.href = "index.html";
-};
-window.newStranger = () => {
-  remove(ref(db, `rooms/${roomId}/presence/${userId}`));
-  window.location.href = "index.html";
-};
-
-function showSystemMessage(msg) {
-  const el = document.createElement("div");
-  el.className = "system-message";
-  el.textContent = msg;
-  document.getElementById("chatBox").appendChild(el);
 }
