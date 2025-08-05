@@ -3,16 +3,30 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chatting with Unknown</title>
+  <title>Unknown Chat Room</title>
   <style>
+    :root {
+      --neon: #00ffff;
+      --error: #ff4444;
+      --bg: #000;
+    }
+
     body {
       margin: 0;
-      background-color: #000;
-      color: #fff;
+      background-color: var(--bg);
+      color: white;
       font-family: monospace;
       display: flex;
       flex-direction: column;
       height: 100vh;
+    }
+
+    #statusBar {
+      text-align: center;
+      background: #111;
+      padding: 10px;
+      font-weight: bold;
+      text-shadow: 0 0 8px var(--neon);
     }
 
     #messages {
@@ -60,7 +74,7 @@
 
     #inputBox button {
       padding: 10px 20px;
-      background: #0ff;
+      background: var(--neon);
       color: #000;
       border: none;
       cursor: pointer;
@@ -69,9 +83,35 @@
     #inputBox button:hover {
       background: #0cc;
     }
+
+    #disconnectNotice {
+      color: var(--error);
+      font-weight: bold;
+      text-align: center;
+      padding: 10px;
+      display: none;
+    }
+
+    #leaveBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #f44;
+      color: white;
+      padding: 5px 10px;
+      border: none;
+      cursor: pointer;
+      z-index: 1000;
+    }
+
+    #leaveBtn:hover {
+      background: #c22;
+    }
   </style>
 </head>
 <body>
+  <div id="statusBar">🔌 Connecting to Unknown...</div>
+  <div id="disconnectNotice">⚠️ The other user has disconnected.</div>
   <div id="messages"></div>
 
   <div id="inputBox">
@@ -79,16 +119,18 @@
     <button onclick="sendMessage()">Send</button>
   </div>
 
+  <button id="leaveBtn" onclick="leaveRoom()">Leave</button>
+
   <!-- Firebase SDK -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
+    import { getDatabase, ref, push, onChildAdded, onDisconnect, set, remove, get, onValue } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
 
-    // Your Firebase config (as provided)
     const firebaseConfig = {
       apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
       authDomain: "the-unknown-chat.firebaseapp.com",
+      databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app",
       projectId: "the-unknown-chat",
       storageBucket: "the-unknown-chat.firebasestorage.app",
       messagingSenderId: "208285058331",
@@ -98,39 +140,74 @@
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     const auth = getAuth();
-
     let userId = null;
-
-    // Get room ID from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const roomId = urlParams.get("room");
+    let roomId = new URLSearchParams(window.location.search).get("room");
+    let partnerId = null;
 
     if (!roomId) {
       alert("Missing room ID!");
       window.location.href = "index.html";
     }
 
-    // Sign in and start chat
-    signInAnonymously(auth).then(() => {
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          userId = user.uid;
-          initChat();
+    setPersistence(auth, browserSessionPersistence).then(() => {
+      return signInAnonymously(auth);
+    }).catch((err) => {
+      console.error("Auth error:", err);
+      showDisconnect("Authentication failed.");
+    });
+
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) return;
+      userId = user.uid;
+
+      const roomRef = ref(db, `rooms/${roomId}`);
+      const roomSnap = await get(roomRef);
+      const roomData = roomSnap.val();
+
+      if (!roomData || (!roomData.user1 && !roomData.user2)) {
+        showDisconnect("Room does not exist.");
+        return;
+      }
+
+      partnerId = (roomData.user1 === userId) ? roomData.user2 : roomData.user1;
+
+      // Monitor partner presence
+      const presenceRef = ref(db, `rooms/${roomId}/presence/${userId}`);
+      await set(presenceRef, true);
+      onDisconnect(presenceRef).remove();
+
+      const partnerPresenceRef = ref(db, `rooms/${roomId}/presence/${partnerId}`);
+      onValue(partnerPresenceRef, (snap) => {
+        if (snap.exists()) {
+          updateStatus("✅ Connected to Unknown");
+        } else {
+          updateStatus("⚠️ Waiting for Unknown...");
+          showDisconnect("The other user has disconnected.");
         }
       });
+
+      initChat();
     });
+
+    function updateStatus(text) {
+      document.getElementById("statusBar").textContent = text;
+    }
+
+    function showDisconnect(reason) {
+      document.getElementById("disconnectNotice").textContent = "⚠️ " + reason;
+      document.getElementById("disconnectNotice").style.display = "block";
+    }
 
     function initChat() {
       const messagesRef = ref(db, `rooms/${roomId}/messages`);
 
-      // Listen for new messages
       onChildAdded(messagesRef, (snapshot) => {
         const msg = snapshot.val();
         addMessage(msg.sender === userId ? "me" : "them", msg.text);
       });
     }
 
-    function sendMessage() {
+    window.sendMessage = function () {
       const input = document.getElementById("messageInput");
       const text = input.value.trim();
       if (text === "") return;
@@ -143,6 +220,10 @@
       });
 
       input.value = "";
+    }
+
+    window.leaveRoom = function () {
+      window.location.href = "index.html";
     }
 
     function addMessage(sender, text) {
