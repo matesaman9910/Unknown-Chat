@@ -16,17 +16,35 @@
       align-items: center;
       text-align: center;
       height: 100vh;
+      overflow: hidden;
+    }
+
+    /* glowing background behind content */
+    .glow {
+      position: absolute;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(0, 255, 255, 0.15), transparent 70%);
+      filter: blur(80px);
+      z-index: 0;
+    }
+
+    h1, p, button {
+      position: relative;
+      z-index: 1;
     }
 
     h1 {
       font-size: 2.5rem;
       margin-bottom: 1rem;
+      text-shadow: 0 0 10px cyan;
     }
 
     p {
       font-size: 1.2rem;
       max-width: 600px;
       margin: 0 20px 2rem;
+      text-shadow: 0 0 8px rgba(0, 255, 255, 0.5);
     }
 
     button {
@@ -37,6 +55,7 @@
       color: #000;
       cursor: pointer;
       transition: 0.3s ease;
+      z-index: 1;
     }
 
     button:hover {
@@ -45,6 +64,7 @@
   </style>
 </head>
 <body>
+  <div class="glow"></div>
   <h1>Welcome to The Unknown Chat</h1>
   <p>
     This is a mysterious space where strangers talk privately.<br>
