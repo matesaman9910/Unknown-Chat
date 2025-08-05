@@ -2,140 +2,52 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Connecting...</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Unknown Chat — Finding Stranger</title>
   <style>
-    :root {
-      --neon: #00ffff;
-      --error: #ff4444;
-      --bg: #000;
-    }
-
     body {
       margin: 0;
-      background-color: var(--bg);
-      font-family: 'Courier New', Courier, monospace;
+      background: black;
+      color: white;
+      font-family: monospace;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
-      text-align: center;
       height: 100vh;
       overflow: hidden;
-      transition: opacity 0.3s ease;
+      flex-direction: column;
     }
 
-    #statusMessage {
+    h1 {
       font-size: 2rem;
-      color: var(--neon);
-      text-shadow: 0 0 15px var(--neon);
+      color: #00ffff;
+      text-shadow: 0 0 15px #00ffff;
     }
 
-    .dot {
-      animation: blink 1s infinite alternate;
+    .dot-anim::after {
+      content: '';
+      display: inline-block;
+      animation: dots 1.5s steps(3, end) infinite;
     }
 
-    @keyframes blink {
-      0% { opacity: 0.3; }
-      100% { opacity: 1; }
+    @keyframes dots {
+      0% { content: ''; }
+      33% { content: '.'; }
+      66% { content: '..'; }
+      100% { content: '...'; }
     }
 
-    #errorMessage {
-      display: none;
-      color: var(--error);
-      font-weight: bold;
-      font-size: 1.2rem;
-      margin-top: 30px;
-      white-space: pre-line;
-      text-shadow: 0 0 8px var(--error);
-      max-width: 90%;
+    #status {
+      font-size: 1.1rem;
+      color: #888;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
-  <h1 id="statusMessage">Waiting for another Unknown<span class="dot">...</span></h1>
-  <h2 id="errorMessage">❌ ERROR: Sorry, we are currently experiencing technical difficulties.
-Please try again later.</h2>
+  <h1>Finding a Stranger<span class="dot-anim"></span></h1>
+  <div id="status">Please wait</div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-app.js";
-    import { getDatabase, ref, push, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
-
-    // Config must include databaseURL
-    const firebaseConfig = {
-      apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
-      authDomain: "the-unknown-chat.firebaseapp.com",
-      databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "the-unknown-chat",
-      storageBucket: "the-unknown-chat.firebasestorage.app",
-      messagingSenderId: "208285058331",
-      appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe"
-    };
-
-    let userId = null;
-    let matched = false;
-
-    try {
-      const app = initializeApp(firebaseConfig);
-      const db = getDatabase(app);
-      const auth = getAuth();
-
-      signInAnonymously(auth)
-        .then(() => {
-          onAuthStateChanged(auth, async (user) => {
-            if (!user) return;
-            userId = user.uid;
-
-            await set(ref(db, `queue/${userId}`), {
-              timestamp: Date.now()
-            }).catch((err) => {
-              showError("Failed to write to queue.\n" + err.message);
-            });
-
-            const queueRef = ref(db, "queue");
-            onValue(queueRef, async (snapshot) => {
-              if (matched) return;
-              const users = snapshot.val();
-              if (!users) return;
-
-              const otherUserId = Object.keys(users).find(id => id !== userId);
-              if (!otherUserId) return;
-
-              matched = true;
-
-              const roomRef = push(ref(db, "rooms"));
-              const roomId = roomRef.key;
-
-              await set(roomRef, {
-                user1: userId,
-                user2: otherUserId,
-                createdAt: Date.now()
-              });
-
-              await remove(ref(db, `queue/${userId}`));
-              await remove(ref(db, `queue/${otherUserId}`));
-
-              window.location.href = `room.html?room=${roomId}`;
-            }, (error) => {
-              showError("Error reading queue.\n" + error.message);
-            });
-          });
-        })
-        .catch((error) => {
-          showError("Authentication failed.\n" + error.message);
-        });
-
-    } catch (e) {
-      showError("Firebase initialization failed.\n" + e.message);
-    }
-
-    function showError(message) {
-      document.getElementById("statusMessage").style.display = "none";
-      const errorElem = document.getElementById("errorMessage");
-      errorElem.innerText = `❌ ERROR: ${message}`;
-      errorElem.style.display = "block";
-    }
-  </script>
+  <script type="module" src="./matchmaker.js"></script>
 </body>
 </html>
