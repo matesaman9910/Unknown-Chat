@@ -5,9 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Connecting...</title>
   <style>
+    :root {
+      --neon: #00ffff;
+      --error: #ff4444;
+      --bg: #000;
+    }
+
     body {
       margin: 0;
-      background-color: #000;
+      background-color: var(--bg);
       font-family: 'Courier New', Courier, monospace;
       display: flex;
       flex-direction: column;
@@ -16,12 +22,13 @@
       text-align: center;
       height: 100vh;
       overflow: hidden;
+      transition: opacity 0.3s ease;
     }
 
     #statusMessage {
       font-size: 2rem;
-      color: #00ffff;
-      text-shadow: 0 0 10px #00ffff;
+      color: var(--neon);
+      text-shadow: 0 0 15px var(--neon);
     }
 
     .dot {
@@ -29,18 +36,19 @@
     }
 
     @keyframes blink {
-      0% { opacity: 0.2; }
+      0% { opacity: 0.3; }
       100% { opacity: 1; }
     }
 
     #errorMessage {
       display: none;
-      color: red;
-      margin-top: 20px;
+      color: var(--error);
       font-weight: bold;
-      text-shadow: 0 0 5px red;
       font-size: 1.2rem;
+      margin-top: 30px;
       white-space: pre-line;
+      text-shadow: 0 0 8px var(--error);
+      max-width: 90%;
     }
   </style>
 </head>
@@ -54,6 +62,7 @@ Please try again later.</h2>
     import { getDatabase, ref, push, onValue, set, remove } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-database.js";
     import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.5.2/firebase-auth.js";
 
+    // Config must include databaseURL
     const firebaseConfig = {
       apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
       authDomain: "the-unknown-chat.firebaseapp.com",
@@ -64,69 +73,68 @@ Please try again later.</h2>
       appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe"
     };
 
+    let userId = null;
+    let matched = false;
+
     try {
       const app = initializeApp(firebaseConfig);
       const db = getDatabase(app);
       const auth = getAuth();
 
-      let userId = null;
-      let matched = false;
+      signInAnonymously(auth)
+        .then(() => {
+          onAuthStateChanged(auth, async (user) => {
+            if (!user) return;
+            userId = user.uid;
 
-      signInAnonymously(auth).catch((error) => {
-        showError();
-        console.error("Auth error:", error);
-      });
+            await set(ref(db, `queue/${userId}`), {
+              timestamp: Date.now()
+            }).catch((err) => {
+              showError("Failed to write to queue.\n" + err.message);
+            });
 
-      onAuthStateChanged(auth, async (user) => {
-        if (!user) return;
-        userId = user.uid;
+            const queueRef = ref(db, "queue");
+            onValue(queueRef, async (snapshot) => {
+              if (matched) return;
+              const users = snapshot.val();
+              if (!users) return;
 
-        await set(ref(db, `queue/${userId}`), {
-          timestamp: Date.now()
-        }).catch((error) => {
-          showError();
-          console.error("DB write error:", error);
-        });
+              const otherUserId = Object.keys(users).find(id => id !== userId);
+              if (!otherUserId) return;
 
-        const queueRef = ref(db, "queue");
-        onValue(queueRef, async (snapshot) => {
-          if (matched) return;
+              matched = true;
 
-          const users = snapshot.val();
-          if (!users) return;
+              const roomRef = push(ref(db, "rooms"));
+              const roomId = roomRef.key;
 
-          const otherUserId = Object.keys(users).find(id => id !== userId);
-          if (!otherUserId) return;
+              await set(roomRef, {
+                user1: userId,
+                user2: otherUserId,
+                createdAt: Date.now()
+              });
 
-          matched = true;
+              await remove(ref(db, `queue/${userId}`));
+              await remove(ref(db, `queue/${otherUserId}`));
 
-          const roomRef = push(ref(db, "rooms"));
-          const roomId = roomRef.key;
-
-          await set(roomRef, {
-            user1: userId,
-            user2: otherUserId,
-            createdAt: Date.now()
+              window.location.href = `room.html?room=${roomId}`;
+            }, (error) => {
+              showError("Error reading queue.\n" + error.message);
+            });
           });
-
-          await remove(ref(db, `queue/${userId}`));
-          await remove(ref(db, `queue/${otherUserId}`));
-
-          window.location.href = `room.html?room=${roomId}`;
-        }, (error) => {
-          showError();
-          console.error("Queue read error:", error);
+        })
+        .catch((error) => {
+          showError("Authentication failed.\n" + error.message);
         });
-      });
-
-      function showError() {
-        document.getElementById("statusMessage").style.display = "none";
-        document.getElementById("errorMessage").style.display = "block";
-      }
 
     } catch (e) {
-      showError();
-      console.error("Firebase init failed:", e);
+      showError("Firebase initialization failed.\n" + e.message);
+    }
+
+    function showError(message) {
+      document.getElementById("statusMessage").style.display = "none";
+      const errorElem = document.getElementById("errorMessage");
+      errorElem.innerText = `❌ ERROR: ${message}`;
+      errorElem.style.display = "block";
     }
   </script>
 </body>
