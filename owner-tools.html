@@ -12,29 +12,55 @@
         text-align: center;
         margin: 0;
         padding: 0;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        background: radial-gradient(circle at center, rgba(255,0,0,0.15) 0%, transparent 70%),
+                    black;
     }
-    .blink {
-        font-size: 3em;
-        animation: blink 1s step-start infinite;
-        margin-top: 20%;
-    }
-    @keyframes blink {
-        50% { opacity: 0; }
+    .vignette {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        box-shadow: inset 0 0 200px rgba(255,0,0,0.8);
     }
     .terminal-bar {
         background-color: red;
         color: black;
-        padding: 10px;
-        font-size: 1.5em;
+        padding: 20px;
+        font-size: 2em;
         font-weight: bold;
+        width: 100%;
+        text-align: center;
+    }
+    .big-text {
+        font-size: 6em;
+        font-weight: bold;
+        animation: blink 1s step-start infinite;
+        margin-top: 40px;
+    }
+    .warning {
+        margin-top: 20px;
+        font-size: 1.5em;
+        max-width: 90%;
+    }
+    @keyframes blink {
+        50% { opacity: 0; }
     }
 </style>
 </head>
 <body>
     <div class="terminal-bar">TERMINAL SECURITY ALERT</div>
-    <div class="blink">ACCESS DENIED</div>
-    <audio autoplay loop>
+    <div class="big-text">ACCESS DENIED</div>
+    <div class="warning">IP ADDRESS AND OTHER INFORMATION LOGGED.<br>OWNER HAS BEEN NOTIFIED.</div>
+    <audio autoplay>
         <source src="https://file.garden/aACuwggY3QmuIi9B/AccessDeniedScanner.ogg" type="audio/ogg">
     </audio>
+    <div class="vignette"></div>
 </body>
 </html>
