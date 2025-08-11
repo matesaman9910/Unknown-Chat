@@ -1,10 +1,11 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Unknown Chat — Lobby</title>
-  <link rel="stylesheet" href="styles.css?v=20250811173708">
+  <link rel="stylesheet" href="styles.css?v=20250811174804">
 </head>
 <body>
   <div id="statusBar" style="display:none;"></div>
@@ -14,6 +15,7 @@
     <div class="cta">
       <button id="startBtn">Find a Stranger</button>
       <button id="howBtn" class="small">How it works</button>
+      <button id="adminBtn" class="small" title="Owner tools">Admin</button>
     </div>
     <p id="status" class="note" style="display:none;">Queueing… looking for someone interesting.</p>
     <p id="error" class="note" style="display:none;color:#ffcdd2;">Matchmaking hiccup. Try again.</p>
@@ -32,6 +34,9 @@
     </div>
   </div>
 
-  <script type="module" src="matchmaker.js?v=20250811173708"></script>
+  <script type="module" src="matchmaker.js?v=20250811174804"></script>
+  <script>
+    document.getElementById("adminBtn").addEventListener("click", ()=> location.href="owner-tools.html");
+  </script>
 </body>
 </html>
