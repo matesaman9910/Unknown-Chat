@@ -1,10 +1,10 @@
-// room.js — v7 with live debug overlay
+// room.js — v7 (debug-aware, handshake stable, typing debounce, cleanup, status fade)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getDatabase, ref, onValue, set, remove, get, update, onDisconnect, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// ---------- Firebase config (yours) ----------
+// ---------- Firebase ----------
 const cfg = {
   apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
   authDomain: "the-unknown-chat.firebaseapp.com",
@@ -17,10 +17,9 @@ const cfg = {
 const app = initializeApp(cfg);
 const db  = getDatabase(app);
 
-// ---------- Debug overlay ----------
+// ---------- Debug ----------
 const qs = new URLSearchParams(location.search);
 const DEBUG = qs.get("debug") === "1" || localStorage.getItem("uc_debug") === "1";
-
 function ensureOverlay() {
   let el = document.getElementById("uc-debug");
   if (!el) {
@@ -44,18 +43,15 @@ function dbg(...args) {
   line.textContent = `[${t}] ${args.map(a => (typeof a === "string" ? a : JSON.stringify(a))).join(" ")}`;
   el.appendChild(line);
   el.scrollTop = el.scrollHeight;
-  // Also mirror to console
   console.log("[UC DEBUG]", ...args);
 }
-
-// If HTML added the hidden overlay, show it when DEBUG is on
 if (DEBUG) {
   const existing = document.getElementById("uc-debug");
   if (existing) existing.style.display = "block";
-  dbg("Debug overlay active.");
+  dbg("Room debug overlay active.");
 }
 
-// ---------- Safe DOM helpers ----------
+// ---------- Safe DOM + status ----------
 const pick = (...sels) => sels.map(s => document.querySelector(s)).find(Boolean) || null;
 function ensureStatusBar() {
   let bar = document.getElementById("statusBar");
@@ -72,56 +68,47 @@ function ensureStatusBar() {
 }
 function setStatus(msg, isError=false) {
   const bar = ensureStatusBar();
+  bar.style.display = "block";
   bar.textContent = msg;
   bar.style.background = isError ? "#2b0b16" : "#041a33";
   bar.style.color      = isError ? "#ffcdd2" : "#9ad1ff";
   dbg("STATUS:", msg);
 }
+function hideStatusAfter(ms=2500) {
+  setTimeout(() => {
+    const bar = document.getElementById("statusBar");
+    if (bar) bar.style.display = "none";
+  }, ms);
+}
 
-// ---------- Grab UI elements (support both id variants you used) ----------
-const messagesEl  = pick("#messages", ".messages");
-const inputEl     = pick("#messageInput", "#message-input");
-const sendBtn     = pick("#sendButton", "#send-btn");
-const leaveBtn    = pick("#leaveBtn", "#leave-btn");
-const typingEl    = pick("#typingIndicator", "#typing-indicator");
+// ---------- UI elements (supports both id variants) ----------
+const messagesEl = pick("#messages", ".messages");
+const inputEl    = pick("#messageInput", "#message-input");
+const sendBtn    = pick("#sendButton", "#send-btn");
+const leaveBtn   = pick("#leaveBtn", "#leave-btn");
+const typingEl   = pick("#typingIndicator", "#typing-indicator");
 
 // ---------- Room / presence ----------
 const roomId   = qs.get("room");
 const playerId = sessionStorage.getItem("playerId") || `p_${Math.random().toString(36).slice(2,9)}`;
 sessionStorage.setItem("playerId", playerId);
-
-if (!roomId) {
-  setStatus("Missing room id. Returning to lobby…", true);
-  dbg("No roomId in URL, redirecting");
-  setTimeout(()=> location.href = "index.html", 1200);
-  throw new Error("No room id");
-}
+if (!roomId) { setStatus("Missing room id. Returning to lobby…", true); setTimeout(()=>location.href="index.html", 1200); throw new Error("no room"); }
 
 dbg("Init", { roomId, playerId });
 
-const playersRef   = ref(db, `rooms/${roomId}/players`);
-const myPlayerRef  = ref(db, `rooms/${roomId}/players/${playerId}`);
-const msgsRef      = ref(db, `rooms/${roomId}/messages`);
-const typingRef    = ref(db, `rooms/${roomId}/typing`);
-const connectedRef = ref(db, ".info/connected");
+const playersRef  = ref(db, `rooms/${roomId}/players`);
+const myPlayerRef = ref(db, `rooms/${roomId}/players/${playerId}`);
+const msgsRef     = ref(db, `rooms/${roomId}/messages`);
+const typingRef   = ref(db, `rooms/${roomId}/typing`);
 
-// Connection state
-onValue(connectedRef, (snap) => {
-  dbg("/.info/connected =", !!snap.val());
-});
-
-// Join presence (ready + heartbeat), and clean on disconnect
+// Join + presence + heartbeat
 await set(myPlayerRef, { ready: true, hb: Date.now(), joinedAt: serverTimestamp() });
 onDisconnect(myPlayerRef).remove();
 setStatus("Waiting for other player…");
-dbg("Presence set →", { ready: true });
 
-// Heartbeat every 20s
-const hbTimer = setInterval(() => {
-  update(myPlayerRef, { hb: Date.now() }).catch(() => {});
-}, 20000);
+const hbTimer = setInterval(() => { update(myPlayerRef, { hb: Date.now() }).catch(()=>{}); }, 20000);
 
-// Handshake + ghost prune
+// Handshake + ghost prune + cleanup
 let hadPeer = false;
 let requeueTimer = null;
 
@@ -129,7 +116,7 @@ onValue(playersRef, async (snap) => {
   const now = Date.now();
   const raw = snap.val() || {};
 
-  // Ghost prune: any player without hb in 60s
+  // Ghost prune (>60s without hb)
   for (const [id, p] of Object.entries(raw)) {
     if (!p || !p.hb || (now - p.hb) > 60000) {
       dbg("Prune ghost:", id);
@@ -147,15 +134,13 @@ onValue(playersRef, async (snap) => {
     hadPeer = true;
     if (requeueTimer) { clearInterval(requeueTimer); requeueTimer = null; }
     setStatus("Connected to stranger!");
+    hideStatusAfter(2500);
   } else {
-    // Alone or peer left → wipe messages
     await remove(msgsRef).catch(()=>{});
     if (hadPeer && !requeueTimer) {
-      // Peer dropped after we were connected → countdown + requeue
       let left = 5;
       systemMsg("Player disconnected — re-queueing in 5s…");
       setStatus(`Player disconnected — re-queueing in ${left}s…`);
-      dbg("Peer left, starting countdown");
       requeueTimer = setInterval(async () => {
         left -= 1;
         setStatus(`Player disconnected — re-queueing in ${left}s…`);
@@ -163,9 +148,9 @@ onValue(playersRef, async (snap) => {
           clearInterval(requeueTimer); requeueTimer = null;
           await remove(myPlayerRef).catch(()=>{});
           const leftover = await get(playersRef);
-          const anyoneLeft = leftover.exists() && Object.keys(leftover.val()||{}).length > 0;
-          if (!anyoneLeft) await remove(ref(db, `rooms/${roomId}`)).catch(()=>{});
-          location.href = "index.html";
+          const anyLeft = leftover.exists() && Object.keys(leftover.val()||{}).length > 0;
+          if (!anyLeft) await remove(ref(db, `rooms/${roomId}`)).catch(()=>{});
+          location.href = "index.html?requeue=1";
         }
       }, 1000);
     } else {
@@ -173,18 +158,16 @@ onValue(playersRef, async (snap) => {
     }
   }
 
-  // If nobody is left → nuke room
   if (total === 0) {
-    dbg("No players remain → deleting room");
+    dbg("No players remain → delete room");
     await remove(ref(db, `rooms/${roomId}`)).catch(()=>{});
   }
 });
 
-// 30s safety timeout if partner never appears
+// 30s timeout if nobody joins
 setTimeout(async () => {
   const snap = await get(playersRef);
-  const players = snap.val() || {};
-  const readyCount = Object.values(players).filter(p => p && p.ready).length;
+  const readyCount = Object.values(snap.val() || {}).filter(p => p && p.ready).length;
   dbg("Timeout check → readyCount:", readyCount);
   if (readyCount < 2 && !hadPeer) {
     setStatus("No one joined. Returning to queue…", true);
@@ -194,15 +177,45 @@ setTimeout(async () => {
     if (!leftover.exists() || Object.keys(leftover.val()||{}).length === 0) {
       await remove(ref(db, `rooms/${roomId}`)).catch(()=>{});
     }
-    location.href = "index.html";
+    location.href = "index.html?requeue=1";
   }
 }, 30000);
+
+// ---------- Typing indicator (debounced + auto-clear) ----------
+const typingMineRef = ref(db, `rooms/${roomId}/typing/${playerId}`);
+onDisconnect(typingMineRef).remove();
+
+function markTyping(active) {
+  if (active) set(typingMineRef, { t: Date.now() }).catch(()=>{});
+  else        remove(typingMineRef).catch(()=>{});
+}
+if (inputEl) {
+  let lastVal = "";
+  let typeTimer = null;
+  inputEl.addEventListener("input", () => {
+    const v = inputEl.value;
+    if (v !== lastVal) {
+      lastVal = v;
+      if (v.trim().length > 0) markTyping(true);
+      clearTimeout(typeTimer);
+      typeTimer = setTimeout(() => markTyping(false), 1500);
+    }
+  });
+  inputEl.addEventListener("blur", () => markTyping(false));
+}
+onValue(typingRef, (snap) => {
+  const all = snap.val() || {};
+  const now = Date.now();
+  const someoneElse = Object.entries(all).some(([uid, obj]) =>
+    uid !== playerId && obj && obj.t && (now - obj.t) < 2000
+  );
+  if (typingEl) typingEl.textContent = someoneElse ? "Stranger is typing..." : "";
+});
 
 // ---------- Messaging ----------
 if (sendBtn && inputEl && messagesEl) {
   sendBtn.addEventListener("click", sendMessage);
   inputEl.addEventListener("keydown", (e) => {
-    // Enter sends; Shift+Enter = newline
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(); }
   });
 
@@ -225,6 +238,7 @@ function sendMessage() {
   if (!text) return;
   const id = `${Date.now()}_${Math.random().toString(36).slice(2,6)}`;
   set(ref(db, `rooms/${roomId}/messages/${id}`), { sender: playerId, text, ts: serverTimestamp() });
+  markTyping(false);
   dbg("Send:", text);
   inputEl.value = "";
 }
@@ -236,18 +250,6 @@ function systemMsg(text) {
   div.textContent = text;
   messagesEl.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
-// Optional typing indicator (won't crash if node missing)
-if (typingEl && inputEl) {
-  inputEl.addEventListener("input", () => {
-    update(ref(db, `rooms/${roomId}/typing/${playerId}`), { t: Date.now() }).catch(()=>{});
-  });
-  onValue(typingRef, (snap) => {
-    const t = snap.val() || {};
-    const someone = Object.keys(t).some(k => k !== playerId);
-    typingEl.textContent = someone ? "Stranger is typing…" : "";
-  });
 }
 
 // ---------- Leave / cleanup ----------
