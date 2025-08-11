@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
   <title>Unknown Chat — Lobby</title>
-  <link rel="stylesheet" href="styles.css?v=20250811171848">
+  <link rel="stylesheet" href="styles.css?v=20250811173708">
 </head>
 <body>
   <div id="statusBar" style="display:none;"></div>
   <div class="container border-glow glow">
-    <h1>Unknown Chat <span class="tag">ANON • 1:1</span></h1>
+    <h1>Unknown Chat <span class="tag">ANONYMOUS • 1:1</span></h1>
     <p class="note">Get paired with a random stranger. No accounts, just real-time chat via Firebase.</p>
     <div class="cta">
       <button id="startBtn">Find a Stranger</button>
@@ -17,7 +17,21 @@
     </div>
     <p id="status" class="note" style="display:none;">Queueing… looking for someone interesting.</p>
     <p id="error" class="note" style="display:none;color:#ffcdd2;">Matchmaking hiccup. Try again.</p>
+    <div class="disclaimer">
+      ⚠️ This is a hobby project. It is <b>not</b> truly private or secure. Messages and metadata live in Firebase
+      and may be visible to the project owner. Don’t share personal info.
+    </div>
   </div>
-  <script type="module" src="matchmaker.js?v=20250811171848"></script>
+
+  <div class="modal" id="howModal">
+    <div class="card border-glow glow">
+      <h2>How it works</h2>
+      <p class="note">You join a queue. When two people are waiting, a room is created. When a user leaves, the room closes.
+        You can requeue to meet someone new. This runs entirely on GitHub Pages + Firebase.</p>
+      <button class="close" id="closeHow">Close</button>
+    </div>
+  </div>
+
+  <script type="module" src="matchmaker.js?v=20250811173708"></script>
 </body>
 </html>

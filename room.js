@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, onValue, set, remove, serverTimestamp, onDisconnect, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -19,34 +18,29 @@ const qs = new URLSearchParams(location.search);
 const roomId = qs.get("room");
 if (!roomId){ location.href = "index.html"; }
 
-// DOM helpers
 const $ = (sel) => document.querySelector(sel);
-function getOrThrow(sel){
-  const el = $(sel);
-  if (!el) throw new Error("Missing element: " + sel);
-  return el;
-}
-function safeText(sel, txt){
-  const el = $(sel);
-  if (el) el.textContent = txt;
-}
 function setStatus(msg, err=false){
   let bar = $("#statusBar");
-  if (!bar){
-    bar = document.createElement("div");
-    bar.id = "statusBar";
-    document.body.prepend(bar);
-  }
+  if(!bar){ bar = document.createElement("div"); bar.id="statusBar"; document.body.prepend(bar); }
   bar.textContent = msg;
   bar.classList.toggle("error", !!err);
 }
+function addSystemMessage(text){
+  const div = document.createElement("div");
+  div.className = "msg system";
+  div.textContent = text;
+  messagesDiv.appendChild(div);
+  messagesDiv.scrollTop = messagesDiv.scrollHeight;
+}
 
-const messagesDiv = getOrThrow("#messages");
-const input = getOrThrow("#messageInput");
-const sendBtn = getOrThrow("#sendButton");
-const typingIndicator = getOrThrow("#typingIndicator");
-const leaveBtn = getOrThrow("#leaveBtn");
-const newStrangerBtn = getOrThrow("#newStrangerBtn");
+const messagesDiv = $("#messages");
+const input = $("#messageInput");
+const sendBtn = $("#sendButton");
+const typingIndicator = $("#typingIndicator");
+const leaveBtn = $("#leaveBtn");
+const newStrangerBtn = $("#newStrangerBtn");
+
+if(!messagesDiv||!input||!sendBtn||!typingIndicator||!leaveBtn||!newStrangerBtn){ throw new Error("Missing DOM"); }
 
 const roomRef = ref(db, `rooms/${roomId}`);
 const messagesRef = ref(db, `rooms/${roomId}/messages`);
@@ -55,21 +49,28 @@ const typingRef = ref(db, `rooms/${roomId}/typing`);
 
 const userId = crypto.randomUUID();
 
-// Presence
 await set(ref(db, `rooms/${roomId}/users/${userId}`), { joined: serverTimestamp() });
 onDisconnect(ref(db, `rooms/${roomId}/users/${userId}`)).remove();
 onDisconnect(ref(db, `rooms/${roomId}/typing/${userId}`)).remove();
 
-// Watch users to show connection state
+let hadPeer = false;
+
 onValue(usersRef, (snap) => {
   const users = snap.val() || {};
-  const count = Object.keys(users).length;
-  if (count >= 2) setStatus("🔗 Connected");
-  else if (count === 1) setStatus("⏳ Waiting for a stranger…");
-  else setStatus("Room empty", true);
+  const ids = Object.keys(users);
+  const count = ids.length;
+
+  if (count >= 2){ setStatus("🔗 Connected"); hadPeer = true; }
+  else if (count === 1){ 
+    setStatus("⏳ Waiting for a stranger…"); 
+    if (hadPeer) {
+      addSystemMessage("Stranger disconnected. Re-queueing in 5 seconds…");
+      setTimeout(()=> { location.href = "index.html?requeue=1"; }, 5000);
+    }
+  }
+  else { setStatus("Room empty", true); }
 });
 
-// If room disappears, bounce to lobby
 onValue(roomRef, (snap) => {
   if (!snap.exists()){
     setStatus("Room closed.", true);
@@ -77,17 +78,15 @@ onValue(roomRef, (snap) => {
   }
 });
 
-// Typing
 input.addEventListener("input", async () => {
   await set(ref(db, `rooms/${roomId}/typing/${userId}`), input.value.length > 0);
 });
 onValue(typingRef, (snap) => {
   const typing = snap.val() || {};
   const someoneElse = Object.keys(typing).some(id => id !== userId && typing[id]);
-  safeText("#typingIndicator", someoneElse ? "Stranger is typing…" : "");
+  typingIndicator.textContent = someoneElse ? "Stranger is typing…" : "";
 });
 
-// Send message
 function sendMessage(){
   const text = input.value.trim();
   if (!text) return;
@@ -99,7 +98,6 @@ function sendMessage(){
 sendBtn.addEventListener("click", sendMessage);
 input.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
 
-// Render messages
 onValue(messagesRef, (snap) => {
   const msgs = snap.val() || {};
   const entries = Object.entries(msgs).sort((a,b)=> a[0].localeCompare(b[0]));
@@ -113,12 +111,12 @@ onValue(messagesRef, (snap) => {
   messagesDiv.scrollTop = messagesDiv.scrollHeight;
 });
 
-// Buttons
 leaveBtn.addEventListener("click", async () => {
   await remove(ref(db, `rooms/${roomId}/users/${userId}`));
   location.href = "index.html";
 });
 newStrangerBtn.addEventListener("click", async () => {
+  addSystemMessage("Leaving room. Re-queueing in 5 seconds…");
   await remove(ref(db, `rooms/${roomId}/users/${userId}`));
-  location.href = "index.html";
+  setTimeout(()=> { location.href = "index.html?requeue=1"; }, 5000);
 });

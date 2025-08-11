@@ -1,4 +1,3 @@
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, push, set, onValue, remove, serverTimestamp, runTransaction, onDisconnect, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
@@ -15,41 +14,33 @@ const cfg = {
 const app = initializeApp(cfg);
 const db = getDatabase(app);
 
-// Helpers
 const $ = (sel) => document.querySelector(sel);
-function ensure(el, id){
-  if (!el){
-    // attempt to create a statusBar if missing
-    if (id === "statusBar"){
-      const b = document.createElement("div");
-      b.id = "statusBar";
-      b.style.display = "none";
-      b.textContent = "";
-      document.body.appendChild(b);
-      return b;
-    }
-    throw new Error("Missing element: " + id);
-  }
-  return el;
-}
 function setStatus(msg, err=false){
-  const bar = ensure($("#statusBar"), "statusBar");
+  let bar = $("#statusBar");
+  if(!bar){ bar = document.createElement("div"); bar.id="statusBar"; document.body.prepend(bar); }
   bar.style.display = "block";
   bar.textContent = msg;
   bar.classList.toggle("error", !!err);
 }
+function modal(id, show){ const m = document.querySelector(id); if(m) m.style.display = show ? "flex" : "none"; }
 
 const startBtn = $("#startBtn");
+const howBtn = $("#howBtn");
+const closeHow = $("#closeHow");
 const statusEl = $("#status");
 const errorEl = $("#error");
+howBtn?.addEventListener("click", ()=> modal("#howModal", true));
+closeHow?.addEventListener("click", ()=> modal("#howModal", false));
+document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") modal("#howModal", false); });
 
 let myId = null;
+let unsub = null;
 let myRef = null;
 
-startBtn?.addEventListener("click", async () => {
+async function joinQueue(){
   try{
-    startBtn.disabled = true;
-    if (statusEl) statusEl.style.display = "block";
+    startBtn && (startBtn.disabled = true);
+    statusEl && (statusEl.style.display = "block");
     setStatus("Joining queue…");
 
     myId = crypto.randomUUID();
@@ -57,13 +48,14 @@ startBtn?.addEventListener("click", async () => {
     await set(myRef, { ts: Date.now(), matched: false });
     onDisconnect(myRef).remove();
 
+    cleanStale();
+
     const qRef = ref(db, "queue");
-    const unsub = onValue(qRef, async (snap) => {
+    unsub = onValue(qRef, async (snap) => {
       const q = snap.val() || {};
 
-      // if I was matched elsewhere
       if (q[myId]?.roomId){
-        unsub();
+        unsub && unsub();
         window.location.href = `room.html?room=${q[myId].roomId}`;
         return;
       }
@@ -73,35 +65,54 @@ startBtn?.addEventListener("click", async () => {
       if (candidates.length === 0) return;
 
       const partnerId = candidates[0];
-
-      // Lock
       const lockKey = [myId, partnerId].sort().join("_");
       const lockRef = ref(db, `locks/${lockKey}`);
       const tx = await runTransaction(lockRef, val => val || { by: myId, at: Date.now() });
       if (!tx.committed) return;
 
-      // Re-check state
       const fresh = (await get(qRef)).val() || {};
-      if (!fresh[myId] || !fresh[partnerId] || fresh[myId].matched || fresh[partnerId].matched){
-        return;
-      }
+      if (!fresh[myId] || !fresh[partnerId] || fresh[myId].matched || fresh[partnerId].matched) return;
 
-      // Create room
       const roomKey = push(ref(db, "rooms")).key;
       await set(ref(db, `rooms/${roomKey}`), { createdAt: serverTimestamp() });
       await update(ref(db, `queue/${myId}`), { matched: true, roomId: roomKey });
       await update(ref(db, `queue/${partnerId}`), { matched: true, roomId: roomKey });
 
-      // Clean lock
       setTimeout(() => remove(lockRef), 10000);
 
-      unsub();
+      unsub && unsub();
       window.location.href = `room.html?room=${roomKey}`;
     });
   }catch(err){
     console.error(err);
     setStatus("Matchmaking failed.", true);
-    if (errorEl) errorEl.style.display = "block";
-    startBtn.disabled = false;
+    errorEl && (errorEl.style.display = "block");
+    startBtn && (startBtn.disabled = false);
   }
-});
+}
+
+function cleanStale(){
+  const now = Date.now();
+  onValue(ref(db,"queue"), (snap) => {
+    const q = snap.val() || {};
+    for (const [k,v] of Object.entries(q)){
+      if (!v || !v.ts) continue;
+      if (now - v.ts > 3*60*1000) remove(ref(db, `queue/${k}`));
+    }
+  }, { onlyOnce: true });
+
+  onValue(ref(db,"rooms"), (snap) => {
+    const rooms = snap.val() || {};
+    for (const [rk, rv] of Object.entries(rooms)){
+      const users = (rv && rv.users) ? Object.keys(rv.users) : [];
+      if (users.length === 0) remove(ref(db, `rooms/${rk}`));
+    }
+  }, { onlyOnce: true });
+}
+
+const url = new URL(location.href);
+if (url.searchParams.get("requeue") === "1"){
+  joinQueue();
+}
+
+startBtn?.addEventListener("click", joinQueue);
