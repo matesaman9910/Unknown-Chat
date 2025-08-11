@@ -1,66 +1,82 @@
+<!-- 
+    If You Are Reading This Then You Probobly Know That
+    https://youtu.be/PXqcHi2fkXI?si=fRuojaC56OVCl3sg
+-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ACCESS DENIED</title>
+<title>Access Denied</title>
 <style>
-    body {
-        background-color: black;
-        color: red;
-        font-family: monospace;
-        text-align: center;
+    html, body {
         margin: 0;
         padding: 0;
-        height: 100vh;
+        background: black;
+        height: 100%;
+        color: red;
+        font-family: monospace;
+        overflow: hidden;
+    }
+    .vignette {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        box-shadow: inset 0 0 200px rgba(255,0,0,0.5);
+        pointer-events: none;
+    }
+    .center {
         display: flex;
         flex-direction: column;
         justify-content: center;
         align-items: center;
-        background: radial-gradient(circle at center, rgba(255,0,0,0.15) 0%, transparent 70%),
-                    black;
-    }
-    .vignette {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
         height: 100%;
-        pointer-events: none;
-        box-shadow: inset 0 0 200px rgba(255,0,0,0.8);
-    }
-    .terminal-bar {
-        background-color: red;
-        color: black;
-        padding: 20px;
-        font-size: 2em;
-        font-weight: bold;
-        width: 100%;
         text-align: center;
     }
-    .big-text {
-        font-size: 6em;
+    .access-denied {
+        font-size: 5em;
         font-weight: bold;
-        animation: blink 1s step-start infinite;
-        margin-top: 40px;
+        animation: blink 0.8s infinite;
     }
-    .warning {
-        margin-top: 20px;
+    .alert {
+        font-size: 2em;
+        background: red;
+        color: black;
+        padding: 10px;
+        margin-bottom: 20px;
+        font-weight: bold;
+    }
+    .details {
         font-size: 1.5em;
-        max-width: 90%;
+        max-width: 80%;
     }
     @keyframes blink {
-        50% { opacity: 0; }
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0; }
     }
 </style>
 </head>
 <body>
-    <div class="terminal-bar">TERMINAL SECURITY ALERT</div>
-    <div class="big-text">ACCESS DENIED</div>
-    <div class="warning">IP ADDRESS AND OTHER INFORMATION LOGGED.<br>OWNER HAS BEEN NOTIFIED.</div>
-    <audio autoplay>
-        <source src="https://file.garden/aACuwggY3QmuIi9B/AccessDeniedScanner.ogg" type="audio/ogg">
-    </audio>
-    <div class="vignette"></div>
+<div class="center">
+    <div class="alert">TERMINAL SECURITY ALERT</div>
+    <div class="access-denied">ACCESS DENIED</div>
+    <div class="details">
+        IP ADDRESS AND OTHER INFORMATION LOGGED.<br>
+        OWNER HAS BEEN NOTIFIED.
+    </div>
+</div>
+<div class="vignette"></div>
+<audio id="alertSound" src="https://file.garden/aACuwggY3QmuIi9B/AccessDeniedScanner.ogg"></audio>
+
+<script>
+window.onload = () => {
+    const audio = document.getElementById('alertSound');
+    audio.play().catch(() => {
+
+        document.body.addEventListener('click', () => {
+            audio.play().catch(() => {});
+        }, { once: true });
+    });
+};
+</script>
 </body>
 </html>
