@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ACCESS DENIED</title>
+<style>
+    body {
+        background-color: black;
+        color: red;
+        font-family: monospace;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+    }
+    .blink {
+        font-size: 3em;
+        animation: blink 1s step-start infinite;
+        margin-top: 20%;
+    }
+    @keyframes blink {
+        50% { opacity: 0; }
+    }
+    .terminal-bar {
+        background-color: red;
+        color: black;
+        padding: 10px;
+        font-size: 1.5em;
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+    <div class="terminal-bar">TERMINAL SECURITY ALERT</div>
+    <div class="blink">ACCESS DENIED</div>
+    <audio autoplay loop>
+        <source src="https://file.garden/aACuwggY3QmuIi9B/AccessDeniedScanner.ogg" type="audio/ogg">
+    </audio>
+</body>
+</html>
