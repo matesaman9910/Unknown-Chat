@@ -1,26 +1,30 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Chat Room</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Unknown Chat — Room</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="container">
+  <div id="statusBar">Connecting…</div>
+  <div class="chat-wrap border-glow glow">
     <div class="header">
-      <h1>Talking to Unknown...</h1>
-      <div class="button-group">
-        <button onclick="leaveRoom()">Leave</button>
-        <button onclick="newStranger()">New Stranger</button>
+      <h1 id="roomTitle">Talking to Stranger</h1>
+      <div class="btns">
+        <button id="newStrangerBtn">New Stranger</button>
+        <button id="leaveBtn">Leave</button>
       </div>
     </div>
-    <div id="statusMessage" class="status-message">Connecting to Unknown...</div>
-    <div id="errorMessage" class="error-message" style="display: none;"></div>
-    <div class="chat-box" id="chatBox"></div>
-    <div class="input-area">
-      <input type="text" id="messageInput" placeholder="Say something mysterious..." />
-      <button onclick="sendMessage()">Send</button>
+
+    <div class="main">
+      <div id="messages"></div>
+      <div id="typingIndicator"></div>
+      <div class="footer">
+        <input type="text" id="messageInput" placeholder="Type a message…" autocomplete="off">
+        <button id="sendButton">Send</button>
+      </div>
     </div>
   </div>
   <script type="module" src="room.js"></script>

@@ -1,19 +1,23 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>The Unknown Chat</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Unknown Chat — Lobby</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <div id="statusBar" style="display:none;"></div>
-  <div class="container">
-    <h1>Welcome to <span class="highlight">The Unknown Chat</span></h1>
-    <p>Talk to a complete stranger. Anonymous. Free. Safe.</p>
-    <button id="startBtn">Begin Chat</button>
-    <div id="status" class="status-message" style="display:none;">Waiting for another unknown...</div>
-    <div id="error" class="error-message" style="display:none;">Could not connect. Please try again.</div>
+  <div class="container border-glow glow">
+    <h1>Unknown Chat <span class="tag">ANON • 1:1</span></h1>
+    <p class="note">Get paired with a random stranger. No accounts, just real‑time chat via Firebase.</p>
+    <div class="cta">
+      <button id="startBtn">Find a Stranger</button>
+      <button id="howBtn" class="small">How it works</button>
+    </div>
+    <p id="status" class="note" style="display:none;">Queueing… looking for someone interesting.</p>
+    <p id="error" class="note" style="display:none;color:#ffcdd2;">Hmm, matchmaking hiccup. Try again.</p>
   </div>
   <script type="module" src="matchmaker.js"></script>
 </body>
