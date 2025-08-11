@@ -3,9 +3,15 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, onValue, set, remove, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// Firebase config (use your existing config)
+// Firebase config PUBLIC
 const firebaseConfig = {
-    // ... your config ...
+  apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
+  authDomain: "the-unknown-chat.firebaseapp.com",
+  databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "the-unknown-chat",
+  storageBucket: "the-unknown-chat.appspot.com",
+  messagingSenderId: "208285058331",
+  appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe"
 };
 
 const app = initializeApp(firebaseConfig);
