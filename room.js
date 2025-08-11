@@ -1,91 +1,76 @@
 
+// Fixed room.js for v6
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, set, remove, serverTimestamp, onDisconnect, push } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue, set, remove, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-const cfg = {
-  apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
-  authDomain: "the-unknown-chat.firebaseapp.com",
-  databaseURL: "https://the-unknown-chat-default-rtdb.europe-west1.firebasedatabase.app",
-  projectId: "the-unknown-chat",
-  storageBucket: "the-unknown-chat.appspot.com",
-  messagingSenderId: "208285058331",
-  appId: "1:208285058331:web:25aa0f03fbae1371dbbfbe"
+// Firebase config (use your existing config)
+const firebaseConfig = {
+    // ... your config ...
 };
 
-const app = initializeApp(cfg);
+const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-const qs = new URLSearchParams(location.search);
-const roomId = qs.get("room");
-if (!roomId){ location.href = "index.html"; }
+// Get room ID and player info
+const urlParams = new URLSearchParams(window.location.search);
+const roomId = urlParams.get('room');
+const playerId = sessionStorage.getItem('playerId');
 
-const $ = (sel) => document.querySelector(sel);
-function setBar(msg, err=false){
-  let bar = $("#statusBar");
-  if(!bar){ bar = document.createElement("div"); bar.id="statusBar"; document.body.prepend(bar); }
-  bar.textContent = msg;
-  bar.classList.toggle("error", !!err);
-}
-function sys(text){
-  const div = document.createElement("div");
-  div.className = "msg system";
-  div.textContent = text;
-  messagesDiv.appendChild(div);
-  messagesDiv.scrollTop = messagesDiv.scrollHeight;
-}
+const statusEl = document.getElementById("status");
+const messagesEl = document.getElementById("messages");
+const inputEl = document.getElementById("message-input");
+const sendBtn = document.getElementById("send-btn");
+const leaveBtn = document.getElementById("leave-btn");
 
-const messagesDiv = $("#messages");
-const input = $("#messageInput");
-const sendBtn = $("#sendButton");
-const typingIndicator = $("#typingIndicator");
-const leaveBtn = $("#leaveBtn");
-const newStrangerBtn = $("#newStrangerBtn");
+statusEl.innerText = "Connecting...";
 
-if(!messagesDiv||!input||!sendBtn||!typingIndicator||!leaveBtn||!newStrangerBtn){ throw new Error("Missing DOM"); }
+// Watch room state
+const roomRef = ref(db, "rooms/" + roomId + "/players");
+onValue(roomRef, (snapshot) => {
+    const players = snapshot.val() || {};
+    const playerCount = Object.keys(players).length;
 
-const roomRef = ref(db, `rooms/${roomId}`);
-const messagesRef = ref(db, `rooms/${roomId}/messages`);
-const usersRef = ref(db, `rooms/${roomId}/users`);
-const typingRef = ref(db, `rooms/${roomId}/typing`);
-
-const userId = crypto.randomUUID();
-
-await set(ref(db, `rooms/${roomId}/users/${userId}`), { joined: serverTimestamp(), hb: Date.now() });
-onDisconnect(ref(db, `rooms/${roomId}/users/${userId}`)).remove();
-onDisconnect(ref(db, `rooms/${roomId}/typing/${userId}`)).remove();
-
-// Heartbeat to avoid ghost users
-setInterval(() => set(ref(db, `rooms/${roomId}/users/${userId}`), { joined: serverTimestamp(), hb: Date.now() }), 20000);
-
-let hadPeer = false;
-
-onValue(usersRef, (snap) => {
-  const users = snap.val() || {};
-  const ids = Object.keys(users);
-  const now = Date.now();
-  // prune remote ghosts (no hb in 60s)
-  for (const [id, val] of Object.entries(users)){ if (!val.hb || now - val.hb > 60000) remove(ref(db, `rooms/${roomId}/users/${id}`)); }
-
-  const activeIds = Object.keys(users).filter(id => users[id]?.hb && now - users[id].hb < 60000);
-
-  if (activeIds.length >= 2){ setBar("🔗 Connected"); hadPeer = true; }
-  else if (activeIds.length === 1){ 
-    setBar("⏳ Waiting for a stranger…"); 
-    if (hadPeer) { sys("Stranger disconnected. Re-queueing in 5 seconds…"); setTimeout(()=> location.href="index.html?requeue=1", 5000); }
-  }
-  else { setBar("Room empty", true); }
+    if (playerCount === 2) {
+        statusEl.innerText = "Connected to stranger!";
+    } else if (playerCount === 1) {
+        statusEl.innerText = "Connecting...";
+    }
 });
 
-onValue(roomRef, (snap) => { if (!snap.exists()){ setBar("Room closed.", true); setTimeout(()=> location.href="index.html", 1200); } });
+// Safety timeout to prevent stuck states
+setTimeout(async () => {
+    const snap = await get(roomRef);
+    const players = snap.val() || {};
+    if (Object.keys(players).length < 2) {
+        statusEl.innerText = "No connection. Returning to queue...";
+        await remove(ref(db, "rooms/" + roomId));
+        window.location.href = "index.html";
+    }
+}, 10000);
 
-input.addEventListener("input", async () => { await set(ref(db, `rooms/${roomId}/typing/${userId}`), input.value.length > 0); });
-onValue(typingRef, (snap) => { const t = snap.val() || {}; const someone = Object.keys(t).some(id => id !== userId && t[id]); typingIndicator.textContent = someone ? "Stranger is typing…" : ""; });
+// Send message
+sendBtn.onclick = () => {
+    const text = inputEl.value.trim();
+    if (!text) return;
+    const msgRef = ref(db, `rooms/${roomId}/messages/${Date.now()}`);
+    set(msgRef, { sender: playerId, text });
+    inputEl.value = "";
+};
 
-function sendMessage(){ const text = input.value.trim(); if (!text) return; const msgRef = push(messagesRef); set(msgRef, { userId, text, ts: serverTimestamp() }); input.value = ""; set(ref(db, `rooms/${roomId}/typing/${userId}`), false); }
-sendBtn.addEventListener("click", sendMessage);
-input.addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
+// Leave room
+leaveBtn.onclick = async () => {
+    await remove(ref(db, "rooms/" + roomId + "/players/" + playerId));
+    window.location.href = "index.html";
+};
 
-onValue(messagesRef, (snap) => { const msgs = snap.val() || {}; const entries = Object.entries(msgs).sort((a,b)=> a[0].localeCompare(b[0])); messagesDiv.innerHTML = ""; for (const [key, m] of entries){ const div = document.createElement("div"); div.className = "msg " + (m.userId === userId ? "you" : "other"); div.textContent = m.text; messagesDiv.appendChild(div); } messagesDiv.scrollTop = messagesDiv.scrollHeight; });
-
-leaveBtn.addEventListener("click", async () => { await remove(ref(db, `rooms/${roomId}/users/${userId}`)); location.href = "index.html"; });
-newStrangerBtn.addEventListener("click", async () => { sys("Leaving room. Re-queueing in 5 seconds…"); await remove(ref(db, `rooms/${roomId}/users/${userId}`)); setTimeout(()=> location.href = "index.html?requeue=1", 5000); });
+// Listen for messages
+const messagesRef = ref(db, `rooms/${roomId}/messages`);
+onValue(messagesRef, (snapshot) => {
+    const msgs = snapshot.val() || {};
+    messagesEl.innerHTML = "";
+    Object.values(msgs).forEach(msg => {
+        const div = document.createElement("div");
+        div.textContent = msg.text;
+        messagesEl.appendChild(div);
+    });
+});
