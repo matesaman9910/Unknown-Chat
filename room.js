@@ -1,9 +1,8 @@
-
-// Fixed room.js for v6
+// room.js — v6 handshake fix
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, onValue, set, remove, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+import { getDatabase, ref, onValue, set, remove, get, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// Firebase config PUBLIC
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDv484MJ-qo9ae3mM8KhW-xo9nYD1lBSEA",
   authDomain: "the-unknown-chat.firebaseapp.com",
@@ -17,42 +16,55 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
-// Get room ID and player info
+// Get room ID & player ID
 const urlParams = new URLSearchParams(window.location.search);
-const roomId = urlParams.get('room');
-const playerId = sessionStorage.getItem('playerId');
+const roomId = urlParams.get("room");
+const playerId = sessionStorage.getItem("playerId") || `p_${Date.now()}`;
+sessionStorage.setItem("playerId", playerId);
 
+// UI elements
 const statusEl = document.getElementById("status");
 const messagesEl = document.getElementById("messages");
 const inputEl = document.getElementById("message-input");
 const sendBtn = document.getElementById("send-btn");
 const leaveBtn = document.getElementById("leave-btn");
 
-statusEl.innerText = "Connecting...";
+statusEl.innerText = "Joining room...";
 
-// Watch room state
-const roomRef = ref(db, "rooms/" + roomId + "/players");
-onValue(roomRef, (snapshot) => {
+// Mark player as ready
+const playerRef = ref(db, `rooms/${roomId}/players/${playerId}`);
+await update(playerRef, { ready: true, joinedAt: Date.now() });
+
+// Listen for players
+const playersRef = ref(db, `rooms/${roomId}/players`);
+onValue(playersRef, (snapshot) => {
     const players = snapshot.val() || {};
-    const playerCount = Object.keys(players).length;
+    const playerList = Object.values(players);
+    const readyCount = playerList.filter(p => p.ready).length;
 
-    if (playerCount === 2) {
+    if (readyCount === 2) {
         statusEl.innerText = "Connected to stranger!";
-    } else if (playerCount === 1) {
-        statusEl.innerText = "Connecting...";
+    } else {
+        statusEl.innerText = "Waiting for other player...";
     }
 });
 
-// Safety timeout to prevent stuck states
+// Timeout if second player never joins
 setTimeout(async () => {
-    const snap = await get(roomRef);
+    const snap = await get(playersRef);
     const players = snap.val() || {};
-    if (Object.keys(players).length < 2) {
+    const readyCount = Object.values(players).filter(p => p.ready).length;
+    if (readyCount < 2) {
         statusEl.innerText = "No connection. Returning to queue...";
-        await remove(ref(db, "rooms/" + roomId));
+        await remove(ref(db, `rooms/${roomId}`));
         window.location.href = "index.html";
     }
-}, 10000);
+}, 30000);
+
+// Auto-remove player on leave/close
+window.addEventListener("beforeunload", () => {
+    remove(playerRef);
+});
 
 // Send message
 sendBtn.onclick = () => {
@@ -61,12 +73,6 @@ sendBtn.onclick = () => {
     const msgRef = ref(db, `rooms/${roomId}/messages/${Date.now()}`);
     set(msgRef, { sender: playerId, text });
     inputEl.value = "";
-};
-
-// Leave room
-leaveBtn.onclick = async () => {
-    await remove(ref(db, "rooms/" + roomId + "/players/" + playerId));
-    window.location.href = "index.html";
 };
 
 // Listen for messages
@@ -80,3 +86,9 @@ onValue(messagesRef, (snapshot) => {
         messagesEl.appendChild(div);
     });
 });
+
+// Leave button
+leaveBtn.onclick = async () => {
+    await remove(playerRef);
+    window.location.href = "index.html";
+};
