@@ -1,42 +1,50 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <title>Unknown Chat — Lobby</title>
-  <link rel="stylesheet" href="styles.css?v=20250811174804">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Unknown Chat — Discontinued</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: #0a0a0a;
+      color: #c8facc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      text-align: center;
+      background: radial-gradient(circle at center, #002c1e, #000000);
+    }
+
+    .message-box {
+      max-width: 600px;
+      padding: 40px;
+      background: #111;
+      border: 2px solid #00ff88;
+      border-radius: 12px;
+      box-shadow: 0 0 40px #00ff8855;
+    }
+
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 0.5em;
+    }
+
+    p {
+      font-size: 1.1em;
+      line-height: 1.6;
+    }
+  </style>
 </head>
 <body>
-  <div id="statusBar" style="display:none;"></div>
-  <div class="container border-glow glow">
-    <h1>Unknown Chat <span class="tag">ANONYMOUS • 1:1</span></h1>
-    <p class="note">Get paired with a random stranger. No accounts, just real-time chat via Firebase.</p>
-    <div class="cta">
-      <button id="startBtn">Find a Stranger</button>
-      <button id="howBtn" class="small">How it works</button>
-      <button id="adminBtn" class="small" title="Owner tools">Admin</button>
-    </div>
-    <p id="status" class="note" style="display:none;">Queueing… looking for someone interesting.</p>
-    <p id="error" class="note" style="display:none;color:#ffcdd2;">Matchmaking hiccup. Try again.</p>
-    <div class="disclaimer">
-      ⚠️ This is a hobby project. It is <b>not</b> truly private or secure. Messages and metadata live in Firebase
-      and may be visible to the project owner. Don’t share personal info.
-    </div>
+  <div class="message-box">
+    <h1>🔵 Unknown Chat</h1>
+    <p>This project has been <strong>discontinued</strong>.</p>
+    <p>Thank you for your support!</p>
+    <p>— matesaman9910</p>
   </div>
-
-  <div class="modal" id="howModal">
-    <div class="card border-glow glow">
-      <h2>How it works</h2>
-      <p class="note">You join a queue. When two people are waiting, a room is created. When a user leaves, the room closes.
-        You can requeue to meet someone new. This runs entirely on GitHub Pages + Firebase.</p>
-      <button class="close" id="closeHow">Close</button>
-    </div>
-  </div>
-
-  <script type="module" src="matchmaker.js?v=20250811v74"></script>
-  <script>
-    document.getElementById("adminBtn").addEventListener("click", ()=> location.href="owner-tools.html");
-  </script>
 </body>
 </html>
